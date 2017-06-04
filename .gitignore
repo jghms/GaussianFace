@@ -9,6 +9,9 @@ __pycache__/
 # Distribution / packaging
 .Python
 env/
+bin/
+include/
+pip-selfcheck.json
 build/
 develop-eggs/
 dist/
@@ -99,3 +102,10 @@ ENV/
 
 # mypy
 .mypy_cache/
+
+
+# ignore binary image files
+res/*
+!res/*.sh
+*.png
+*.jpg
