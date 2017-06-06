@@ -21,6 +21,8 @@ aligner = GFAlign('res/shape_predictor_68_face_landmarks.dat')
 rects = aligner.detectAll(rgbImg)
 
 (x, y, w, h) = aligner.rect2BoundingBox(rects[0])
+
+shape = aligner.landmarkPrediction(rgbImg, rects[0])
 cv2.rectangle(image, (x, y), (x+w, y+h), (0, 255, 0), 2)
 shape = aligner.landmarkPrediction(rgbImg, rects[0])
 
