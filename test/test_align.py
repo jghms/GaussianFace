@@ -31,3 +31,10 @@ class GFALignTest(unittest.TestCase):
         self.assertEqual(y, 4)
         self.assertEqual(w, 8)
         self.assertEqual(h, 10)
+
+    def test_landmarkPredict(self):
+        aligner = GFAlign('res/shape_predictor_68_face_landmarks.dat')
+        rect = dlib.rectangle(left=45, right=107, top=53, bottom=115)
+        shape = aligner.landmarkPrediction(self.rgbImg, rect)
+
+        self.assertEqual(shape.shape, (68, 2))
