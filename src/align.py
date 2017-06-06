@@ -1,4 +1,5 @@
 import dlib
+import numpy as np
 
 class GFAlign:
     """
@@ -16,7 +17,9 @@ class GFAlign:
             predictor: Path to the landmark specification file.
         """
         self.detector = dlib.get_frontal_face_detector()
-        # self.predictor = predictor = dlib.shape_predictor(predictor)
+        self.predictor = None
+        if predictor is not None:
+            self.predictor = dlib.shape_predictor(predictor)
 
     def detectAll(self, rgbImg):
         """
@@ -49,3 +52,49 @@ class GFAlign:
 
     	# return a tuple of (x, y, w, h)
     	return (x, y, w, h)
+
+    def shape_to_np(self, shape, dtype="int"):
+        """
+        Converts the extracted dlib shapes to numpy arrays.
+
+        Args:
+            shape: Landmark coordinates as returned by dlib.
+
+        Returns:
+            np.array: 68x2 Numpy array containing the coordinates.
+        """
+    	coords = np.zeros((68, 2), dtype=dtype)
+    	for i in range(0, 68):
+    		coords[i] = (shape.part(i).x, shape.part(i).y)
+
+    	return coords
+
+    def landmarkPrediction(self, rgbImg, rect):
+        """
+        Predicts the facial landmarks in a given area of an image.
+
+        This requires the predictor variable to be initialized when constructing
+        the object.
+
+        Raises:
+            if self.predictor is None raises an exception.
+
+        Args:
+            rgbImg: Image containing the face at coords of rect.
+            rect: Rectangle surrounding the face, this is where the algorithm
+                looks at.
+
+        Returns:
+            np.array: numpy array of size 68x2 containing the landmark coordinates.
+        """
+
+        if self.predictor == None:
+            raise Error("""
+                GFAlign predictor was not initialized. Pass the filename of the
+                landmark definitions during constructing the object.
+            """)
+
+        shape = self.predictor(rgbImg, rect)
+        shape = self.shape_to_np(shape)
+
+        return shape
