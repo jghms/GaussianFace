@@ -19,8 +19,8 @@ class GFALignTest(unittest.TestCase):
         self.assertEqual(len(rects), 1)
         self.assertEqual(rects[0].left(), 45)
         self.assertEqual(rects[0].right(), 107)
-        self.assertEqual(rects[0].top(), 53)
-        self.assertEqual(rects[0].bottom(), 115)
+        self.assertEqual(rects[0].top(), 52)
+        self.assertEqual(rects[0].bottom(), 114)
 
     def test_rect2bb(self):
         aligner = GFAlign(None)
