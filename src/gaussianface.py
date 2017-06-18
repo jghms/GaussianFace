@@ -83,3 +83,23 @@ def mLBP(greyImg, R, P, x, y, I):
         return I(lbp)
     else:
         return (P-1)*P+2
+
+
+def H(m, R, P, I):
+
+    h = np.zeros(((P-1)*P+2, 1), dtype=int)
+
+    for i, row in enumerate(m):
+        for j, px in enumerate(row):
+            res = mLBP(m, R, P, i, j, I)
+            h[res] = h[res] + 1
+
+    return h
+
+def F(m, R, P, I):
+    f = np.zeros((R, (P-1)*P+2))
+
+    for r in range(1, R+1):
+        f[r-1] = H(m, r, P, I)
+
+    return f
