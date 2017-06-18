@@ -1,0 +1,263 @@
+import numpy as np
+from numpy import linalg as la
+
+
+from PIL import Image
+import sys # TODO remove
+import os.path # TODO remove
+
+PCAAccuracy = 0.90 # 0.98
+
+def PCA(data):
+
+    # Covariance matrix
+    data = (data - np.mean(data, axis=0)) / np.std(data, axis=0)
+    cov = np.cov(data, rowvar=False)
+    #mu = np.mean(data, axis=0)
+    #cov = np.cov((data - mu), rowvar=False)
+
+    # Compute eigenvectors
+    eig, eigV = la.eig(cov)
+    eigSize = eigV.shape
+    normV = eig / np.sum(eig)
+    
+    # Sort the eigenvectors
+    sortedV = np.argsort(normV)
+    sortedV = sortedV[: :-1]
+
+    # Find the most important eigenvectors
+    important = normV[sortedV[0]]
+    w = eigV[sortedV[0]];
+    i = 1;
+    while (important < PCAAccuracy and i < eigSize[0]) or i < 2:
+        important += normV[sortedV[i]]
+        w = np.vstack((w, eigV[sortedV[i]]));
+        i += 1;
+
+    return w.T
+
+def LDA(dataClass1, dataClass2, F3=0):
+    feat = dataClass1.shape[1]
+
+    # Calculate mean
+    mu1 = np.mean(dataClass1, axis=0)
+    mu2 = np.mean(dataClass2, axis=0)
+    mu = (mu1 + mu2) / 2;
+    #mu3 = np.mean(F3, axis=0)
+    #mu = (mu1 + mu2 + mu3) / 3;
+
+    #print "mu"
+    #print mu1
+    #print mu2
+    #print mu3
+
+    # Within-class Scatter matrix
+    s1 = ((dataClass1 - mu1).T.dot((dataClass1 - mu1)))
+    s2 = ((dataClass2 - mu2).T.dot((dataClass2 - mu2)))
+    sw = s1 + s2;
+    #s3 = ((F3 - mu3).T.dot((F3 - mu3)))
+    #sw = s1 + s2 + s3;
+
+    # Small round errors so the matrix is not symmetric and gives imaginary parts
+    #c1 = np.cov((dataClass1 - mu1), rowvar=False)
+    #c2 = np.cov((dataClass2 - mu2), rowvar=False)
+    #c3 = np.cov((F3 - mu3), rowvar=False)
+
+
+    #print "sw"
+    #print sw
+    #print "scw"
+    #print scw
+
+    # Between class
+    sb1 = dataSize/2 * (mu1 - mu) * (mu1 - mu).reshape(feat, 1);
+    sb2 = dataSize/2 * (mu2 - mu) * (mu2 - mu).reshape(feat, 1);
+    sb = sb1 + sb2
+    #sb3 = dataSize/2 * (mu3 - mu) * (mu3 - mu).reshape(feat, 1);
+    #sb = sb1 + sb2 + sb3;
+
+    #print "sb"
+    #print sb
+
+    eig, eigV = la.eig(la.inv(sw).dot(sb))
+
+    #print "Eig"
+    #print eig
+    #print ""
+    #print eigV
+
+    w = eigV.T[np.argmax(eig)]
+
+    #print w
+
+    return w.T
+
+def readFeretFiles():
+    partitionsPath = './colorferet/colorferet/colorferet/dvd1/doc/partitions/'
+    imagePath1 = './colorferet/colorferet/colorferet/dvd1/data/images/'
+    imagePath2 = './colorferet/colorferet/colorferet/dvd2/data/images/'
+
+    dup1 = partitionsPath + 'dup1.txt' # 736
+    dup2 = partitionsPath + 'dup2.txt' # 994
+    fa = partitionsPath + 'fa.txt'     # 228
+    fb = partitionsPath + 'fb.txt'     # 992
+    # fc = open(partitionsPath + 'fc.txt', 'r')
+
+    imgCount = 0
+    for filename in [dup1, fa, dup2, fb]: # Training
+        partitionCount = 0
+        print filename
+        with open(filename, 'r') as fp:
+            for line in fp:
+                l = line.split()
+
+                if os.path.exists(imagePath1 + l[0] +  '/' + l[1]):
+                    with open(imagePath1 + l[0] +  '/' + l[1]) as img:
+                        #print("open" + l[1])
+                        imgCount += 1
+                        partitionCount += 1
+                elif os.path.exists(imagePath2 + l[0] +  '/' + l[1]):
+                    with open(imagePath2 + l[0] +  '/' + l[1]) as img:
+                        #print("open" + l[1])
+                        imgCount += 1
+                        partitionCount += 1
+                else:
+                    print(l)
+                    raise IOError("File")
+
+        print(partitionCount)
+    print imgCount
+
+    print img_two
+    img_two = np.asarray(img_two)
+    print img_two
+
+F1 = np.ones((50, 4)) # JxR
+F2 = np.ones((50, 4)) # JxR
+F3 = np.ones((50, 4)) # JxR
+
+ii = 0;
+with open('iris.data') as fp:
+     for line in fp:
+        l = line.split(',')
+        if (ii < 50):
+            F1[ii][0] = float(l[0])
+            F1[ii][1] = float(l[1])
+            F1[ii][2] = float(l[2])
+            F1[ii][3] = float(l[3])
+        elif (ii < 100):
+            F2[ii - 50][0] = float(l[0])
+            F2[ii - 50][1] = float(l[1])
+            F2[ii - 50][2] = float(l[2])
+            F2[ii - 50][3] = float(l[3])
+        else:
+            F3[ii - 100][0] = float(l[0])
+            F3[ii - 100][1] = float(l[1])
+            F3[ii - 100][2] = float(l[2])
+            F3[ii - 100][3] = float(l[3])
+
+        ii += 1; 
+
+dataSize = 100
+features = 4
+
+w = LDA(F1, F2, F3)
+
+import matplotlib.pyplot as plt
+idx = np.fromfunction(lambda i, j: j, (1, dataSize/2), dtype=int)
+
+plt.plot(idx[0], F1.dot(w), 'ro')
+plt.plot(idx[0]+dataSize/2, F2.dot(w), 'bo')
+plt.plot(idx[0]+dataSize, F3.dot(w), 'go')
+plt.show()
+
+
+F = np.vstack((F1, F2))
+F = np.vstack((F, F3))
+
+w = PCA(F)
+
+plt.plot(idx[0], F1.dot(w)[:, 1], 'ro')
+plt.plot(idx[0]+dataSize/2, F2.dot(w)[:, 1], 'bo')
+plt.plot(idx[0]+dataSize, F3.dot(w)[:, 1], 'go')
+plt.show()
+
+w2 = LDA(F1.dot(w), F2.dot(w), F3.dot(w))
+
+plt.plot(idx[0], F1.dot(w).dot(w2), 'ro')
+plt.plot(idx[0]+dataSize/2, F2.dot(w).dot(w2), 'bo')
+plt.plot(idx[0]+dataSize, F3.dot(w).dot(w2), 'go')
+plt.show()
+
+sys.exit(0)
+
+R = 100 # Number of Scales
+P = [1 , 2 ,3 ,4 ,5] # 1xR Number of pixels in neighbourhood
+J = 10 # Amount of subregions
+
+dataSize = 100
+features = 3
+
+F = np.ones((J, R)) # JxR
+
+#np.random.seed(2342349784) # random seed for consistency
+
+mu_vec1 = np.zeros(features)
+cov_mat1 = np.identity(features)
+class1_sample = np.random.multivariate_normal(mu_vec1, cov_mat1, dataSize/2).T
+
+mu_vec2 = np.ones(features)*4
+cov_mat2 = np.identity(features)
+cov_mat2[2][2] = 4
+class2_sample = np.random.multivariate_normal(mu_vec2, cov_mat2, dataSize/2).T
+
+all_samples = np.concatenate((class1_sample, class2_sample), axis=1)
+
+class1_sample = class1_sample.T
+class2_sample = class2_sample.T
+all_samples = all_samples.T
+
+# Matix DxF
+
+# PCA -> FxNewDim
+
+# Matrix DxNewDim
+
+# Calculate Similarity
+
+# LDA
+
+
+print("All samples")
+print(all_samples)
+
+w = PCA(all_samples)
+
+print("PCA w " + str(w.shape))
+print(str(w))
+
+w=np.identity(features)
+
+class1_samplePCA = np.dot(class1_sample, w)
+class2_samplePCA = np.dot(class2_sample, w)
+all_samplesPCA = np.dot(all_samples, w)
+
+# TODO w = LDA(class1_samplePCA, class2_samplePCA)
+w = LDA(class1_sample, class2_sample)
+
+print("LDA w " + str(w.shape))
+print(str(w))
+
+class1_sampleLDA = np.dot(class1_samplePCA, w)
+class2_sampleLDA = np.dot(class2_samplePCA, w)
+all_samplesLDA = np.dot(all_samplesPCA, w)
+#print("Result")
+#print(all_samples)
+
+import matplotlib.pyplot as plt
+idx = np.fromfunction(lambda i, j: j, (1, dataSize/2), dtype=int)
+
+plt.plot(idx[0], class1_sampleLDA, 'ro')
+plt.plot(idx[0]+dataSize/2, class2_sampleLDA, 'bo')
+plt.show()
+
