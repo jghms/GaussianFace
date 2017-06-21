@@ -23,10 +23,9 @@ rects = aligner.detectAll(rgbImg)
 
 (x, y, w, h) = aligner.rect2BoundingBox(rects[0])
 
-shape = aligner.landmarkPrediction(rgbImg, rects[0])
-
-thumbnail = aligner.align(image, shape, np.array([36,  33, 45]), 150)
-thumbnail = cv2.resize(thumbnail, (120, 150))
+grayImg = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+thumbnail = grayImg[y:y+h,x:x+w]
+thumbnail = cv2.resize(thumbnail, (142, 120))
 
 cv2.imwrite('out.png', image)
 cv2.imwrite('thumbnail.png', thumbnail)
