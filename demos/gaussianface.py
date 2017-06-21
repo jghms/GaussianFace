@@ -10,3 +10,6 @@ patches = extractPatches(image)
 
 for i, patch in enumerate(patches):
     cv2.imwrite('patches/patch{}.png'.format(i), patch)
+    print i
+
+print("Done")

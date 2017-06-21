@@ -1,12 +1,13 @@
 import numpy as np
 from numpy import linalg as la
+from src.gaussianface import *
 
-
-from PIL import Image
+#from PIL import Image
 import sys # TODO remove
 import os.path # TODO remove
 
-PCAAccuracy = 0.90 # 0.98
+import cv2
+from src.align import GFAlign
 
 def PCA(data):
 
@@ -103,6 +104,70 @@ def readFeretFiles():
     fb = partitionsPath + 'fb.txt'     # 992
     # fc = open(partitionsPath + 'fc.txt', 'r')
 
+    training = 'feret_training.srt'
+
+    I = np.zeros((10, 120, 142))
+
+    i = 0
+    imgCount = 0
+    with open(training, 'r') as trainingFiles:
+        for line in trainingFiles:
+            image = line.split()
+            for img in image:
+                part1 = img[0:5]
+                part2 = img[5:7]
+                part3 = img[7:10] # 010 or Something else
+                part4 = img[11:17]
+                part5 = ''
+                if img[10] == 'a':
+                    part4 = img[12:18]
+                    part5 = '_' + img[10]
+                elif img[10] == 'd':
+                    part4 = img[12:18]
+                imgFile = part1 + '/' + part1 + '_' + part4 + '_fa' + part5 + '.ppm'
+
+
+                print(img)
+                print(imgFile)
+                if os.path.exists(imagePath1 + imgFile):
+                    #with open(imagePath1 + imgFile) as img:
+                        #print("open" + l[1])
+                    imgCount += 1
+                    imagePath = imagePath1 + imgFile
+
+                elif os.path.exists(imagePath2 + imgFile):
+                    #with open(imagePath2 + imgFile) as img:
+                        #print("open" + l[1])
+                    imgCount += 1
+                    imagePath = imagePath1 + imgFile
+                else:
+                    print("File not found")
+                    #raise IOError("File")
+                    continue
+
+
+                image = cv2.imread(imagePath)
+                rgbImg = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
+                aligner = GFAlign(None)
+                rects = aligner.detectAll(rgbImg)
+
+                (x, y, w, h) = aligner.rect2BoundingBox(rects[0])
+
+                grayImg = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+                thumbnail = grayImg[y:y+h,x:x+w]
+                thumbnail = cv2.resize(thumbnail, (142, 120))
+
+                print thumbnail
+                I[imgCount][:][:] = thumbnail
+
+                if imgCount >= 9:
+                    return I
+
+    print("imgCount: " + str(imgCount))
+    return I
+
+def readAllFeretFiles():
     imgCount = 0
     for filename in [dup1, fa, dup2, fb]: # Training
         partitionCount = 0
@@ -132,64 +197,100 @@ def readFeretFiles():
     img_two = np.asarray(img_two)
     print img_two
 
-F1 = np.ones((50, 4)) # JxR
-F2 = np.ones((50, 4)) # JxR
-F3 = np.ones((50, 4)) # JxR
-
-ii = 0;
-with open('iris.data') as fp:
-     for line in fp:
-        l = line.split(',')
-        if (ii < 50):
-            F1[ii][0] = float(l[0])
-            F1[ii][1] = float(l[1])
-            F1[ii][2] = float(l[2])
-            F1[ii][3] = float(l[3])
-        elif (ii < 100):
-            F2[ii - 50][0] = float(l[0])
-            F2[ii - 50][1] = float(l[1])
-            F2[ii - 50][2] = float(l[2])
-            F2[ii - 50][3] = float(l[3])
-        else:
-            F3[ii - 100][0] = float(l[0])
-            F3[ii - 100][1] = float(l[1])
-            F3[ii - 100][2] = float(l[2])
-            F3[ii - 100][3] = float(l[3])
-
-        ii += 1; 
-
-dataSize = 100
-features = 4
-
-w = LDA(F1, F2, F3)
-
-import matplotlib.pyplot as plt
-idx = np.fromfunction(lambda i, j: j, (1, dataSize/2), dtype=int)
-
-plt.plot(idx[0], F1.dot(w), 'ro')
-plt.plot(idx[0]+dataSize/2, F2.dot(w), 'bo')
-plt.plot(idx[0]+dataSize, F3.dot(w), 'go')
-plt.show()
 
 
-F = np.vstack((F1, F2))
-F = np.vstack((F, F3))
+def testData():
+    F1 = np.ones((50, 4)) # JxR
+    F2 = np.ones((50, 4)) # JxR
+    F3 = np.ones((50, 4)) # JxR
 
-w = PCA(F)
 
-plt.plot(idx[0], F1.dot(w)[:, 1], 'ro')
-plt.plot(idx[0]+dataSize/2, F2.dot(w)[:, 1], 'bo')
-plt.plot(idx[0]+dataSize, F3.dot(w)[:, 1], 'go')
-plt.show()
+    ii = 0;
+    with open('iris.data') as fp:
+         for line in fp:
+            l = line.split(',')
+            if (ii < 50):
+                F1[ii][0] = float(l[0])
+                F1[ii][1] = float(l[1])
+                F1[ii][2] = float(l[2])
+                F1[ii][3] = float(l[3])
+            elif (ii < 100):
+                F2[ii - 50][0] = float(l[0])
+                F2[ii - 50][1] = float(l[1])
+                F2[ii - 50][2] = float(l[2])
+                F2[ii - 50][3] = float(l[3])
+            else:
+                F3[ii - 100][0] = float(l[0])
+                F3[ii - 100][1] = float(l[1])
+                F3[ii - 100][2] = float(l[2])
+                F3[ii - 100][3] = float(l[3])
 
-w2 = LDA(F1.dot(w), F2.dot(w), F3.dot(w))
+            ii += 1; 
 
-plt.plot(idx[0], F1.dot(w).dot(w2), 'ro')
-plt.plot(idx[0]+dataSize/2, F2.dot(w).dot(w2), 'bo')
-plt.plot(idx[0]+dataSize, F3.dot(w).dot(w2), 'go')
-plt.show()
+    dataSize = 100
+    features = 4
 
-sys.exit(0)
+    w = LDA(F1, F2, F3)
+
+    import matplotlib.pyplot as plt
+    idx = np.fromfunction(lambda i, j: j, (1, dataSize/2), dtype=int)
+
+    plt.plot(idx[0], F1.dot(w), 'ro')
+    plt.plot(idx[0]+dataSize/2, F2.dot(w), 'bo')
+    plt.plot(idx[0]+dataSize, F3.dot(w), 'go')
+    plt.show()
+
+
+    F = np.vstack((F1, F2))
+    F = np.vstack((F, F3))
+
+    w = PCA(F)
+
+    plt.plot(idx[0], F1.dot(w)[:, 1], 'ro')
+    plt.plot(idx[0]+dataSize/2, F2.dot(w)[:, 1], 'bo')
+    plt.plot(idx[0]+dataSize, F3.dot(w)[:, 1], 'go')
+    plt.show()
+
+    w2 = LDA(F1.dot(w), F2.dot(w), F3.dot(w))
+
+    plt.plot(idx[0], F1.dot(w).dot(w2), 'ro')
+    plt.plot(idx[0]+dataSize/2, F2.dot(w).dot(w2), 'bo')
+    plt.plot(idx[0]+dataSize, F3.dot(w).dot(w2), 'go')
+    plt.show()
+
+#readFeretFiles()
+
+
+
+#print ""
+#print "Done"
+#sys.exit(0)
+
+R = 10
+P = 8
+PCAAccuracy = 0.98
+k = 2 # J 3 - 11
+J = k*k
+imgSize = 501
+
+img = readFeretFiles()
+
+FJ = np.zeros((J, imgSize, 58)) # OBS 59!?
+
+for j  in range(0, J):
+    images = 10
+
+    for i in range(0, images):
+        imgS = img[i][:][:]
+
+        # Create regions
+        patches = extractPatches(imgS, k, i)
+
+        index = createIndex()
+
+        f = F(patches, R, P, index)[:][0]
+        FJ[j][i][:] = f.reshape(58)
+
 
 R = 100 # Number of Scales
 P = [1 , 2 ,3 ,4 ,5] # 1xR Number of pixels in neighbourhood
@@ -198,9 +299,51 @@ J = 10 # Amount of subregions
 dataSize = 100
 features = 3
 
+print FJ.shape
+print FJ
+
+sys.exit(0)
+testData()
+
 F = np.ones((J, R)) # JxR
 
 #np.random.seed(2342349784) # random seed for consistency
+
+
+
+# Matix DxF
+
+# PCA -> FxNewDim
+
+# Matrix DxNewDim
+
+# Calculate Similarity
+
+# LDA
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 mu_vec1 = np.zeros(features)
 cov_mat1 = np.identity(features)
@@ -216,17 +359,6 @@ all_samples = np.concatenate((class1_sample, class2_sample), axis=1)
 class1_sample = class1_sample.T
 class2_sample = class2_sample.T
 all_samples = all_samples.T
-
-# Matix DxF
-
-# PCA -> FxNewDim
-
-# Matrix DxNewDim
-
-# Calculate Similarity
-
-# LDA
-
 
 print("All samples")
 print(all_samples)

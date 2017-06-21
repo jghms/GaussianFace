@@ -1,21 +1,30 @@
 import numpy as np
 
-def extractPatches(rgbImg):
+def extractPatches(rgbImg, k, i):
     """
     Extracts patches of 25pxx25px from a face with a stride of 2.
     """
-    x = 0
-    y = 0
-    width = 25
-    height = 25
+    imgWidth = 142
+    imgHeight = 120
 
-    patches = []
-    while y+height < rgbImg.shape[0]:
+    if i == 0:
         x = 0
-        while x+width < rgbImg.shape[1]:
-            patches.append(rgbImg[x:x+width, y:y+height])
-            x = x + 2
-        y = y + 2
+        y = 0
+    else:
+        x = (k % i ) * imgWidth / k
+        y = int(k/i) * imgHeight / k
+    #width = k
+    #height = k
+
+    #patches = []
+    #while y+height < rgbImg.shape[0]:
+        #x = 0
+        #while x+width < rgbImg.shape[1]:
+            #patches.append(rgbImg[x:x+width, y:y+height])
+            #x = x + 2
+        #y = y + 2
+
+    return rgbImg[x:x+imgWidth / k, y:y+imgHeight / k]
 
     return patches
 
@@ -59,8 +68,11 @@ def LBP(greyImg, R, P, x, y):
     gp = []
     for i, px in enumerate(coords):
         # Looks like this is flipped but it actually needs to be like this.
-        gp.append(greyImg[x+px[1], y+px[0]])
-        res = res + s(greyImg[x+px[1], y+px[0]] - gc)*2**i
+        try:
+            gp.append(greyImg[x+px[1], y+px[0]])
+            res = res + s(greyImg[x+px[1], y+px[0]] - gc)*2**i
+        except Exception as e:
+            gp.append(0)
 
     return (res, gc, gp)
 
@@ -92,14 +104,15 @@ def H(m, R, P, I):
     for i, row in enumerate(m):
         for j, px in enumerate(row):
             res = mLBP(m, R, P, i, j, I)
-            h[res] = h[res] + 1
-
+            if not res == 58:
+                h[res] = h[res] + 1
     return h
 
 def F(m, R, P, I):
     f = np.zeros((R, (P-1)*P+2))
 
     for r in range(1, R+1):
-        f[r-1] = H(m, r, P, I)
+        h = H(m, r, P, I)
+        f[r-1][:] = h[:][0]
 
     return f
