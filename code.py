@@ -128,22 +128,22 @@ def readFeretFiles():
 
 
                 print(img)
-                print(imgFile)
                 if os.path.exists(imagePath1 + imgFile):
                     #with open(imagePath1 + imgFile) as img:
                         #print("open" + l[1])
-                    imgCount += 1
                     imagePath = imagePath1 + imgFile
 
                 elif os.path.exists(imagePath2 + imgFile):
                     #with open(imagePath2 + imgFile) as img:
                         #print("open" + l[1])
-                    imgCount += 1
                     imagePath = imagePath1 + imgFile
                 else:
+                    print(imgFile)
                     print("File not found")
                     #raise IOError("File")
                     continue
+
+                print("Found: " + imgFile)
 
 
                 image = cv2.imread(imagePath)
@@ -158,8 +158,9 @@ def readFeretFiles():
                 thumbnail = grayImg[y:y+h,x:x+w]
                 thumbnail = cv2.resize(thumbnail, (142, 120))
 
-                print thumbnail
+                #print thumbnail
                 I[imgCount][:][:] = thumbnail
+                imgCount += 1
 
                 if imgCount >= 9:
                     return I
@@ -269,46 +270,59 @@ def testData():
 R = 10
 P = 8
 PCAAccuracy = 0.98
-k = 2 # J 3 - 11
+k = 3 # J 3 - 11
 J = k*k
-imgSize = 501
+imgSize = 10 # 501
 
-img = readFeretFiles()
+generateFJ = False
 
-FJ = np.zeros((J, imgSize, 58)) # OBS 59!?
+if generateFJ:
 
-for j  in range(0, J):
-    images = 10
+    img = readFeretFiles()
 
-    for i in range(0, images):
-        imgS = img[i][:][:]
+    np.save('savedMatrix/tmp', img)
 
-        # Create regions
-        patches = extractPatches(imgS, k, i)
+    FJ = np.zeros((J, imgSize, 58)) # OBS 59!?
 
-        index = createIndex()
+    for j  in range(0, J):
+        images = 10
 
-        f = F(patches, R, P, index)[:][0]
-        FJ[j][i][:] = f.reshape(58)
+        for i in range(0, images):
+            imgS = img[i][:][:]
 
+            # Create regions
+            patch = extractPatches(imgS, k, j)
 
-R = 100 # Number of Scales
-P = [1 , 2 ,3 ,4 ,5] # 1xR Number of pixels in neighbourhood
-J = 10 # Amount of subregions
+            index = createIndex()
 
-dataSize = 100
-features = 3
+            f = F(patch, R, P, index)[:][0]
 
-print FJ.shape
-print FJ
+            #print "Patch Shape: " + str(patch.shape)
+            #print "f shape: " + str(f.shape)
+            #print "f avg: " + str(np.average(f))
 
-sys.exit(0)
-testData()
+            FJ[j][i][:] = f.reshape(58)
+        print("FJ: " + str(j) + " done")
 
-F = np.ones((J, R)) # JxR
+    R = 100 # Number of Scales
+    P = [1 , 2 ,3 ,4 ,5] # 1xR Number of pixels in neighbourhood
+    J = 10 # Amount of subregions
 
-#np.random.seed(2342349784) # random seed for consistency
+    dataSize = 10
+    features = 58
 
+    print FJ.shape
+    print FJ
+
+    np.save('savedMatrix/FJ', FJ)
+else:
+    FJ = np.load('savedMatrix/FJ.npy')
+    
+print FJ[0][:][:].shape
+
+wPCA = PCA(FJ[0][:][:])
+
+print wPCA
 
 
 # Matix DxF
@@ -342,54 +356,52 @@ F = np.ones((J, R)) # JxR
 
 
 
+def oldCode():
+    mu_vec1 = np.zeros(features)
+    cov_mat1 = np.identity(features)
+    class1_sample = np.random.multivariate_normal(mu_vec1, cov_mat1, dataSize/2).T
 
+    mu_vec2 = np.ones(features)*4
+    cov_mat2 = np.identity(features)
+    cov_mat2[2][2] = 4
+    class2_sample = np.random.multivariate_normal(mu_vec2, cov_mat2, dataSize/2).T
 
+    all_samples = np.concatenate((class1_sample, class2_sample), axis=1)
 
-mu_vec1 = np.zeros(features)
-cov_mat1 = np.identity(features)
-class1_sample = np.random.multivariate_normal(mu_vec1, cov_mat1, dataSize/2).T
+    class1_sample = class1_sample.T
+    class2_sample = class2_sample.T
+    all_samples = all_samples.T
 
-mu_vec2 = np.ones(features)*4
-cov_mat2 = np.identity(features)
-cov_mat2[2][2] = 4
-class2_sample = np.random.multivariate_normal(mu_vec2, cov_mat2, dataSize/2).T
+    print("All samples")
+    print(all_samples)
 
-all_samples = np.concatenate((class1_sample, class2_sample), axis=1)
+    w = PCA(all_samples)
 
-class1_sample = class1_sample.T
-class2_sample = class2_sample.T
-all_samples = all_samples.T
+    print("PCA w " + str(w.shape))
+    print(str(w))
 
-print("All samples")
-print(all_samples)
+    w=np.identity(features)
 
-w = PCA(all_samples)
+    class1_samplePCA = np.dot(class1_sample, w)
+    class2_samplePCA = np.dot(class2_sample, w)
+    all_samplesPCA = np.dot(all_samples, w)
 
-print("PCA w " + str(w.shape))
-print(str(w))
+    # TODO w = LDA(class1_samplePCA, class2_samplePCA)
+    w = LDA(class1_sample, class2_sample)
 
-w=np.identity(features)
+    print("LDA w " + str(w.shape))
+    print(str(w))
 
-class1_samplePCA = np.dot(class1_sample, w)
-class2_samplePCA = np.dot(class2_sample, w)
-all_samplesPCA = np.dot(all_samples, w)
+    class1_sampleLDA = np.dot(class1_samplePCA, w)
+    class2_sampleLDA = np.dot(class2_samplePCA, w)
+    all_samplesLDA = np.dot(all_samplesPCA, w)
+    #print("Result")
+    #print(all_samples)
 
-# TODO w = LDA(class1_samplePCA, class2_samplePCA)
-w = LDA(class1_sample, class2_sample)
+    import matplotlib.pyplot as plt
+    idx = np.fromfunction(lambda i, j: j, (1, dataSize/2), dtype=int)
 
-print("LDA w " + str(w.shape))
-print(str(w))
-
-class1_sampleLDA = np.dot(class1_samplePCA, w)
-class2_sampleLDA = np.dot(class2_samplePCA, w)
-all_samplesLDA = np.dot(all_samplesPCA, w)
-#print("Result")
-#print(all_samples)
-
-import matplotlib.pyplot as plt
-idx = np.fromfunction(lambda i, j: j, (1, dataSize/2), dtype=int)
-
-plt.plot(idx[0], class1_sampleLDA, 'ro')
-plt.plot(idx[0]+dataSize/2, class2_sampleLDA, 'bo')
-plt.show()
+    plt.plot(idx[0], class1_sampleLDA, 'ro')
+    plt.plot(idx[0]+dataSize/2, class2_sampleLDA, 'bo')
+    plt.show()
 

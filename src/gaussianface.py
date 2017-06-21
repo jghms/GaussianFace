@@ -4,27 +4,30 @@ def extractPatches(rgbImg, k, i):
     """
     Extracts patches of 25pxx25px from a face with a stride of 2.
     """
-    imgWidth = 142
-    imgHeight = 120
+    imgWidth = rgbImg.shape[0]
+    imgHeight = rgbImg.shape[1]
 
-    if i == 0:
+    xSize = int(np.ceil(imgWidth / (k * 1.0)))
+    ySize = int(np.ceil(imgHeight / (k * 1.0)))
+
+    x = (i % k ) * xSize
+    y = int(i/k) * ySize
+    xend = min(imgWidth, x+xSize)
+    yend = min(imgHeight, y+ySize)
+
+    return rgbImg[x:xend, y:yend]
+
+def depricated_extractPatches(rgbImg):
+    width = k
+    height = k
+
+    patches = []
+    while y+height < rgbImg.shape[0]:
         x = 0
-        y = 0
-    else:
-        x = (k % i ) * imgWidth / k
-        y = int(k/i) * imgHeight / k
-    #width = k
-    #height = k
-
-    #patches = []
-    #while y+height < rgbImg.shape[0]:
-        #x = 0
-        #while x+width < rgbImg.shape[1]:
-            #patches.append(rgbImg[x:x+width, y:y+height])
-            #x = x + 2
-        #y = y + 2
-
-    return rgbImg[x:x+imgWidth / k, y:y+imgHeight / k]
+        while x+width < rgbImg.shape[1]:
+            patches.append(rgbImg[x:x+width, y:y+height])
+            x = x + 2
+        y = y + 2
 
     return patches
 
@@ -99,13 +102,13 @@ def mLBP(greyImg, R, P, x, y, I):
 
 def H(m, R, P, I):
 
-    h = np.zeros(((P-1)*P+2, 1), dtype=int)
+    h = np.zeros((1, (P-1)*P+2), dtype=int)
 
     for i, row in enumerate(m):
         for j, px in enumerate(row):
             res = mLBP(m, R, P, i, j, I)
             if not res == 58:
-                h[res] = h[res] + 1
+                h[0][res] = h[0][res] + 1
     return h
 
 def F(m, R, P, I):
@@ -113,6 +116,5 @@ def F(m, R, P, I):
 
     for r in range(1, R+1):
         h = H(m, r, P, I)
-        f[r-1][:] = h[:][0]
-
+        f[r-1] = h
     return f
