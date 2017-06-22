@@ -9,6 +9,16 @@ import os.path # TODO remove
 import cv2
 from src.align import GFAlign
 
+R = 10 # 10
+P = 8 # 8
+PCAAccuracy = 0.98 # 0.98
+k = 3 # J 3 - 11
+J = k*k 
+featuresSize = 58
+trainingSetSize = 495 # 501 (Some images does not exist)
+resizeWidth = 120 # 120
+resizeHeight = 142 # 142
+
 def PCA(data):
 
     # Covariance matrix
@@ -35,9 +45,64 @@ def PCA(data):
         w = np.vstack((w, eigV[sortedV[i]]));
         i += 1;
 
+    print("PCA Eigenvectors " + str(i))
+
     return w.T
 
-def LDA(dataClass1, dataClass2, F3=0):
+def LDA(data, labels):
+    feat = data.shape[1]
+
+    # Calculate mean
+
+    mu = np.mean(data, axis=0)
+
+    sw = np.zeros((feat, feat))
+    sb = np.zeros((feat, feat))
+
+    muClass = np.zeros((1, feat))
+    dataClass = np.zeros((0, feat))
+    label = 1
+    objects = 0
+    for idx in range(0, data.shape[0]):
+        if not label == labels[idx]:
+            label = labels[idx]
+            muClass = muClass / objects
+            sw += ((dataClass - muClass).T.dot((dataClass - muClass)))
+            sb += objects * (muClass - mu) * (muClass - mu).reshape(feat, 1);
+            dataClass = np.zeros((0, feat))
+            muClass = np.zeros((1, feat))
+            objects = 0
+        objects += 1
+
+        muClass += data[idx]
+        dataClass = np.vstack((dataClass, data[idx]))
+
+    eig, eigV = la.eig(la.inv(sw).dot(sb))
+
+    # Get one Eigenvector
+    #w = eigV.T[np.argmax(eig)]
+
+    # Get more Eigenvectors
+    # Sort the eigenvectors
+    normV = eig / np.sum(eig)
+    eigSize = eigV.shape
+    sortedV = np.argsort(normV)
+    sortedV = sortedV[: :-1]
+
+    # Find the most important eigenvectors
+    important = normV[sortedV[0]]
+    w = eigV[sortedV[0]];
+    i = 1;
+    while (important < PCAAccuracy and i < eigSize[0]) or i < 2:
+        important += normV[sortedV[i]]
+        w = np.vstack((w, eigV[sortedV[i]]));
+        i += 1;
+
+    print "LDA Eigenvectors  " + str(i)
+
+    return w.T
+
+def LDAOld(dataClass1, dataClass2, F3=0):
     feat = dataClass1.shape[1]
 
     # Calculate mean
@@ -106,13 +171,16 @@ def readFeretFiles():
 
     training = 'feret_training.srt'
 
-    I = np.zeros((10, 120, 142))
+    I = np.zeros((trainingSetSize, resizeWidth, resizeHeight))
+    L = np.zeros((trainingSetSize))
 
     i = 0
     imgCount = 0
+    label = 0
     with open(training, 'r') as trainingFiles:
         for line in trainingFiles:
             image = line.split()
+            label += 1
             for img in image:
                 part1 = img[0:5]
                 part2 = img[5:7]
@@ -125,28 +193,28 @@ def readFeretFiles():
                 elif img[10] == 'd':
                     part4 = img[12:18]
                 imgFile = part1 + '/' + part1 + '_' + part4 + '_fa' + part5 + '.ppm'
+                imgFile2 = part1 + '/' + part1 + '_' + part4 + '_fa' + '_a' + part5 + '.ppm'
 
-
-                print(img)
+                
                 if os.path.exists(imagePath1 + imgFile):
-                    #with open(imagePath1 + imgFile) as img:
-                        #print("open" + l[1])
                     imagePath = imagePath1 + imgFile
-
+                elif os.path.exists(imagePath1 + imgFile2):
+                    imagePath = imagePath1 + imgFile2
                 elif os.path.exists(imagePath2 + imgFile):
-                    #with open(imagePath2 + imgFile) as img:
-                        #print("open" + l[1])
-                    imagePath = imagePath1 + imgFile
+                    imagePath = imagePath2 + imgFile
+                elif os.path.exists(imagePath2 + imgFile2):
+                    imagePath = imagePath2 + imgFile2
                 else:
+                    print(img)
                     print(imgFile)
                     print("File not found")
                     #raise IOError("File")
                     continue
 
-                print("Found: " + imgFile)
-
+                print("Found: " + imgFile + " Progress: " +str(round(100.0*imgCount/495, 1)) + "%")
 
                 image = cv2.imread(imagePath)
+
                 rgbImg = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
                 aligner = GFAlign(None)
@@ -156,17 +224,18 @@ def readFeretFiles():
 
                 grayImg = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
                 thumbnail = grayImg[y:y+h,x:x+w]
-                thumbnail = cv2.resize(thumbnail, (142, 120))
+                thumbnail = cv2.resize(thumbnail, (resizeHeight, resizeWidth))
 
                 #print thumbnail
                 I[imgCount][:][:] = thumbnail
+                L[imgCount] = label
                 imgCount += 1
 
-                if imgCount >= 9:
-                    return I
+                #if imgCount >= 10:
+                #    return I, L
 
     print("imgCount: " + str(imgCount))
-    return I
+    return I, L
 
 def readAllFeretFiles():
     imgCount = 0
@@ -259,30 +328,20 @@ def testData():
     plt.plot(idx[0]+dataSize, F3.dot(w).dot(w2), 'go')
     plt.show()
 
-#readFeretFiles()
 
+mode = 3
 
+if mode == 1:
 
-#print ""
-#print "Done"
-#sys.exit(0)
+    img, L = readFeretFiles()
 
-R = 10
-P = 8
-PCAAccuracy = 0.98
-k = 3 # J 3 - 11
-J = k*k
-imgSize = 10 # 501
-
-generateFJ = False
-
-if generateFJ:
-
-    img = readFeretFiles()
 
     np.save('savedMatrix/tmp', img)
+    np.save('savedMatrix/labels', L)
+    
+    print L
 
-    FJ = np.zeros((J, imgSize, 58)) # OBS 59!?
+    FJ = np.zeros((J, trainingSetSize, featuresSize)) # OBS 59!?
 
     for j  in range(0, J):
         images = 10
@@ -301,7 +360,7 @@ if generateFJ:
             #print "f shape: " + str(f.shape)
             #print "f avg: " + str(np.average(f))
 
-            FJ[j][i][:] = f.reshape(58)
+            FJ[j][i][:] = f.reshape(featuresSize)
         print("FJ: " + str(j) + " done")
 
     R = 100 # Number of Scales
@@ -315,29 +374,45 @@ if generateFJ:
     print FJ
 
     np.save('savedMatrix/FJ', FJ)
-else:
+elif mode == 2:
     FJ = np.load('savedMatrix/FJ.npy')
-    
-print FJ[0][:][:].shape
+    L = np.load('savedMatrix/labels.npy')
 
-wPCA = PCA(FJ[0][:][:])
+elif mode == 3:
 
-print wPCA
+    for j in range(0, J-1):
+        wPCA = PCA(FJ[j][:][:])
+        dPCA = np.dot(FJ[j][:][:], wPCA)
+
+        wLDA = LDA(dPCA, L)
+        DJ = np.dot(dPCA, wLDA)
+
+        #wLDA = LDA(FJ[j][:][:], L)
+        #DJ = np.dot(FJ[j][:][:], wLDA)
+
+        print "New DJ"
+        #print DJ
+
+        np.save('savedMatrix/wLDA'+str(j), DJ)
+        np.save('savedMatrix/DJ'+str(j), DJ)
+
+elif mode == 4:
+    # Load DJ
+
+    DJ = array()
+    wLDA = array()
+
+    for i in range(0, 9-1):
+        DJ[i] = np.load('savedMatrix\DJ'+str(i))
+        wLDA[i] = np.load('savedMatrix/wLDA'+str(j))
+
+# Load test image/s
 
 
-# Matix DxF
-
-# PCA -> FxNewDim
-
-# Matrix DxNewDim
-
-# Calculate Similarity
-
-# LDA
+# Get FJ for picture to test
 
 
-
-
+    # Calculate Similarity
 
 
 
