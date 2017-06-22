@@ -1,4 +1,5 @@
 import numpy as np
+import cv2
 
 def extractPatches(rgbImg, k, i):
     """
@@ -55,7 +56,7 @@ def s(x):
 
 def uniformity(gc, gp):
 
-    return abs(s(gp[-1]-gc) - s(gp[0] - gc)) + sum([abs(s(gp[i] - gc) - s(gp[i-1]-gc)) for i in range(1, len(gp))])
+    return abs(s(gp[-1]-int(gc)) - s(gp[0] - int(gc))) + sum([abs(s(gp[i] - int(gc)) - s(gp[i-1]-int(gc))) for i in range(1, len(gp))])
 
 def LBP(greyImg, R, P, x, y):
     """
@@ -71,11 +72,14 @@ def LBP(greyImg, R, P, x, y):
     gp = []
     for i, px in enumerate(coords):
         # Looks like this is flipped but it actually needs to be like this.
+        g = 0
         try:
-            gp.append(greyImg[x+px[1], y+px[0]])
-            res = res + s(greyImg[x+px[1], y+px[0]] - gc)*2**i
-        except Exception as e:
-            gp.append(0)
+            g = greyImg[x+px[1], y+px[0]]
+        except Exception:
+            pass
+
+        gp.append(g)
+        res = res + s(int(g) - int(gc))*2**i
 
     return (res, gc, gp)
 
