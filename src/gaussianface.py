@@ -1,9 +1,12 @@
 import numpy as np
 import cv2
+from sklearn.decomposition import IncrementalPCA
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 
 def extractPatches(rgbImg, k, i):
     """
-    Extracts patches of 25pxx25px from a face with a stride of 2.
+    Returns the i-th patch of the image divided into k-by-k patches, going row
+    by row.
     """
     imgWidth = rgbImg.shape[0]
     imgHeight = rgbImg.shape[1]
@@ -105,7 +108,9 @@ def mLBP(greyImg, R, P, x, y, I):
 
 
 def H(m, R, P, I):
-
+    """
+    Calculates regional LBP histogram for the subregion m and radius r.
+    """
     h = np.zeros((1, (P-1)*P+2), dtype=int)
 
     for i, row in enumerate(m):
@@ -116,9 +121,42 @@ def H(m, R, P, I):
     return h
 
 def F(m, R, P, I):
+    """
+    Calculates multiresolution regional facedescriptor by concatenating histograms
+    for all radii 1..R.
+    """
     f = np.zeros((R, (P-1)*P+2))
 
     for r in range(1, R+1):
         h = H(m, r, P, I)
         f[r-1] = h
     return f
+
+def FJ(images, j, R, P, I):
+    """
+    Calculates regional facedescriptors F for region j of all images.
+    """
+    FJ = []
+    for img in images:
+        img = img.astype(np.uint8)
+        FJ.append(F(R, P, I))
+
+    return np.array(FJ)
+
+def WJlda(images, j, R, P, I):
+    """
+    Calculates a transformation matrix based on PCA such that  98% of the signal
+    are retained and after that applies LDA to transform the data.
+    """
+
+    fj = FJ(images, j, R, P, I)
+
+    def W():
+        pca = PCA(n_components=0.98)
+        pca.fit(fj)
+        
+
+
+
+
+def DJ(W, FJ):

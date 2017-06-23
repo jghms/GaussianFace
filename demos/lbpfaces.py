@@ -20,21 +20,7 @@ thumbnail = cv2.resize(thumbnail, (142, 120))
 cv2.imwrite('out.png', image)
 cv2.imwrite('thumbnail.png', thumbnail)
 
-# k = 3
-# J = k*k
-#
-# FJ = np.zeros((J, imgSize, 58))
-#
-# for j  in range(0, J):
-#     images = 10
-#     patch = extractPatches(thumbnail, k, j)
-#     index = createIndex()
-#     score = mLBP(patch, R, P, x, y, I)
-#
-#
-#     f = F(patch, R, P, index)[:][0]
-#
-R = 8
+R = 2
 P = 8
 print thumbnail.shape
 lbpimage = np.empty_like(thumbnail)
