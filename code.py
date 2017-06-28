@@ -1,13 +1,15 @@
 import numpy as np
 from numpy import linalg as la
-from src.gaussianface import *
 
 #from PIL import Image
 import sys # TODO remove
 import os.path # TODO remove
-
+#try:
+from src.gaussianface import *
 import cv2
 from src.align import GFAlign
+#except Exception as e:
+#pass
 
 R = 10 # 10
 P = 8 # 8
@@ -16,13 +18,13 @@ k = 3 # J 3 - 11
 J = k*k 
 featuresSize = 58
 trainingSetSize = 495 # 501 (Some images does not exist)
-resizeWidth = 120 # 120
-resizeHeight = 142 # 142
+resizeWidth = 130 # 120
+resizeHeight = 150 # 142
 
 def PCA(data):
 
     # Covariance matrix
-    data = (data - np.mean(data, axis=0)) / np.std(data, axis=0)
+    data = (data - np.mean(data, axis=0)) / np.std(data, axis=0) # TODO Check
     cov = np.cov(data, rowvar=False)
     #mu = np.mean(data, axis=0)
     #cov = np.cov((data - mu), rowvar=False)
@@ -38,11 +40,11 @@ def PCA(data):
 
     # Find the most important eigenvectors
     important = normV[sortedV[0]]
-    w = eigV[sortedV[0]];
+    w = eigV[:, sortedV[0]];
     i = 1;
     while (important < PCAAccuracy and i < eigSize[0]) or i < 2:
         important += normV[sortedV[i]]
-        w = np.vstack((w, eigV[sortedV[i]]));
+        w = np.vstack((w, eigV[:, sortedV[i]]));
         i += 1;
 
     print("PCA Eigenvectors " + str(i))
@@ -64,9 +66,16 @@ def LDA(data, labels):
     label = 1
     objects = 0
     for idx in range(0, data.shape[0]):
-        if not label == labels[idx]:
+        if (not label == labels[idx]) or idx == data.shape[0]-1:
+            if idx == data.shape[0]-1:
+                muClass += data[idx]
+                dataClass = np.vstack((dataClass, data[idx]))
+                objects += 1
+
             label = labels[idx]
             muClass = muClass / objects
+            print str(label) + " Mu" 
+            print muClass
             sw += ((dataClass - muClass).T.dot((dataClass - muClass)))
             sb += objects * (muClass - mu) * (muClass - mu).reshape(feat, 1);
             dataClass = np.zeros((0, feat))
@@ -76,6 +85,13 @@ def LDA(data, labels):
 
         muClass += data[idx]
         dataClass = np.vstack((dataClass, data[idx]))
+
+    #print "Sb"
+    #print sb
+    #print "Sw"
+    #print sw
+    #print "Mu"
+    #print mu
 
     eig, eigV = la.eig(la.inv(sw).dot(sb))
 
@@ -91,14 +107,19 @@ def LDA(data, labels):
 
     # Find the most important eigenvectors
     important = normV[sortedV[0]]
-    w = eigV[sortedV[0]];
+    w = eigV[:, sortedV[0]];
     i = 1;
     while (important < PCAAccuracy and i < eigSize[0]) or i < 2:
         important += normV[sortedV[i]]
-        w = np.vstack((w, eigV[sortedV[i]]));
+        w = np.vstack((w, eigV[:, sortedV[i]]));
         i += 1;
 
-    print "LDA Eigenvectors  " + str(i)
+    print "LDA Eigenvalues  " + str(i)
+    #print eig
+    #print "Eigenvectors"
+    #print eigV
+    #print "W"
+    #print w.T
 
     return w.T
 
@@ -237,37 +258,76 @@ def readFeretFiles():
     print("imgCount: " + str(imgCount))
     return I, L
 
-def readAllFeretFiles():
+def readSet(partitionName):
+    partitionsPath = './colorferet/colorferet/colorferet/dvd1/doc/partitions/'
+    imagePath1 = './colorferet/colorferet/colorferet/dvd1/data/images/'
+    imagePath2 = './colorferet/colorferet/colorferet/dvd2/data/images/'
+
+    #dup1 = partitionsPath + 'dup1.txt' # 736
+    #dup2 = partitionsPath + 'dup2.txt' # 228
+    #fa = partitionsPath + 'fa.txt'     # 994
+    #fb = partitionsPath + 'fb.txt'     # 992
+    # fc = open(partitionsPath + 'fc.txt', 'r')
+
+    filename = partitionsPath + partitionName + '.txt'
+
     imgCount = 0
-    for filename in [dup1, fa, dup2, fb]: # Training
-        partitionCount = 0
-        print filename
-        with open(filename, 'r') as fp:
-            for line in fp:
-                l = line.split()
+    print filename
+    num_lines = sum(1 for line in open(filename))
 
-                if os.path.exists(imagePath1 + l[0] +  '/' + l[1]):
-                    with open(imagePath1 + l[0] +  '/' + l[1]) as img:
-                        #print("open" + l[1])
-                        imgCount += 1
-                        partitionCount += 1
-                elif os.path.exists(imagePath2 + l[0] +  '/' + l[1]):
-                    with open(imagePath2 + l[0] +  '/' + l[1]) as img:
-                        #print("open" + l[1])
-                        imgCount += 1
-                        partitionCount += 1
-                else:
-                    print(l)
-                    raise IOError("File")
-
-        print(partitionCount)
-    print imgCount
-
-    print img_two
-    img_two = np.asarray(img_two)
-    print img_two
+    limit = 5
+    num_lines = min(limit, num_lines)
 
 
+    I = np.zeros((num_lines, resizeWidth, resizeHeight))
+    L = np.zeros((num_lines))
+    print(I.shape)
+    with open(filename, 'r') as fp:
+
+        for line in fp:
+            l = line.split()
+
+            # TODO remove LIMIT test SIZE
+            if limit and imgCount >= limit:
+                print("imgCount (with limit): " + str(imgCount))
+                return I, L
+
+            if os.path.exists(imagePath1 + l[0] +  '/' + l[1]):
+                imagePath = imagePath1 + l[0] +  '/' + l[1]
+            elif os.path.exists(imagePath2 + l[0] +  '/' + l[1]):
+                imagePath = imagePath2 + l[0] +  '/' + l[1]
+            else:
+                print(l)
+                print("File not found")
+                continue
+
+            print("Found: " + l[0] +  '/' + l[1] + " Progress: " +str(round(100.0*imgCount/num_lines, 1)) + "%")
+
+
+            image = cv2.imread(imagePath)
+
+            rgbImg = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
+            aligner = GFAlign(None)
+            rects = aligner.detectAll(rgbImg)
+
+            try:
+                (x, y, w, h) = aligner.rect2BoundingBox(rects[0])
+            except Exception as e:
+                print("Rect error " + str(l))
+                continue;
+
+            grayImg = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+            thumbnail = grayImg[y:y+h,x:x+w]
+            thumbnail = cv2.resize(thumbnail, (resizeHeight, resizeWidth))
+
+            #print thumbnail
+            I[imgCount][:][:] = thumbnail
+            L[imgCount] = l[0]
+            imgCount += 1
+
+    print("imgCount: " + str(imgCount))
+    return I, L
 
 def testData():
     F1 = np.ones((50, 4)) # JxR
@@ -299,54 +359,52 @@ def testData():
 
     dataSize = 100
     features = 4
+    F = np.vstack((F1, F2))
+    F = np.vstack((F, F3))
 
-    w = LDA(F1, F2, F3)
+    labels = np.hstack((np.ones(50) , np.ones(50) * 2,)) 
+    labels = np.hstack((labels, np.ones(50)*3))
+
+    w = LDA(F, labels)
 
     import matplotlib.pyplot as plt
     idx = np.fromfunction(lambda i, j: j, (1, dataSize/2), dtype=int)
 
-    plt.plot(idx[0], F1.dot(w), 'ro')
-    plt.plot(idx[0]+dataSize/2, F2.dot(w), 'bo')
-    plt.plot(idx[0]+dataSize, F3.dot(w), 'go')
+    D1 = F1.dot(w)
+    D2 = F2.dot(w)
+    D3 = F3.dot(w)
+
+    plt.plot(D1[:, 0], D1[:, 1], 'ro')
+    plt.plot(D2[:, 0], D2[:, 1], 'bo')
+    plt.plot(D3[:, 0], D3[:, 1], 'go')
     plt.show()
 
-
-    F = np.vstack((F1, F2))
-    F = np.vstack((F, F3))
+    sys.exit(0)
 
     w = PCA(F)
 
-    plt.plot(idx[0], F1.dot(w)[:, 1], 'ro')
-    plt.plot(idx[0]+dataSize/2, F2.dot(w)[:, 1], 'bo')
-    plt.plot(idx[0]+dataSize, F3.dot(w)[:, 1], 'go')
+    D1 = F1.dot(w)
+    D2 = F2.dot(w)
+    D3 = F3.dot(w)
+
+    plt.plot(D1[:, 0], D1[:, 1], 'ro')
+    plt.plot(D2[:, 0], D2[:, 1], 'bo')
+    plt.plot(D3[:, 0], D3[:, 1], 'go')
     plt.show()
 
-    w2 = LDA(F1.dot(w), F2.dot(w), F3.dot(w))
+    w2 = LDA(F.dot(w), labels)
 
     plt.plot(idx[0], F1.dot(w).dot(w2), 'ro')
     plt.plot(idx[0]+dataSize/2, F2.dot(w).dot(w2), 'bo')
     plt.plot(idx[0]+dataSize, F3.dot(w).dot(w2), 'go')
     plt.show()
 
-
-mode = 3
-
-if mode == 1:
-
-    img, L = readFeretFiles()
-
-
-    np.save('savedMatrix/tmp', img)
-    np.save('savedMatrix/labels', L)
-    
-    print L
-
-    FJ = np.zeros((J, trainingSetSize, featuresSize)) # OBS 59!?
+def createFJ(img):
+    FJ = np.zeros((J, img.shape[0], featuresSize)) # OBS 59!?
 
     for j  in range(0, J):
-        images = 10
 
-        for i in range(0, images):
+        for i in range(0, img.shape[0]):
             imgS = img[i][:][:]
 
             # Create regions
@@ -356,19 +414,123 @@ if mode == 1:
 
             f = F(patch, R, P, index)[:][0]
 
-            #print "Patch Shape: " + str(patch.shape)
-            #print "f shape: " + str(f.shape)
-            #print "f avg: " + str(np.average(f))
-
             FJ[j][i][:] = f.reshape(featuresSize)
-        print("FJ: " + str(j) + " done")
+        if (img.shape[0] > 10):
+            print("FJ: " + str(j) + " done")
+    if (img.shape[0] < 10):
+        print("FJ: done")
+    return FJ
 
-    R = 100 # Number of Scales
-    P = [1 , 2 ,3 ,4 ,5] # 1xR Number of pixels in neighbourhood
-    J = 10 # Amount of subregions
+def OLDcreateFileList(partitionName, type = 2, printFound=False):
+    partitionsPath1 = './colorferet/colorferet/colorferet/dvd1/doc/partitions/'
+    partitionsPath2 = './colorferet/'
+    imagePath1 = './colorferet/colorferet/colorferet/dvd1/data/images/'
+    imagePath2 = './colorferet/colorferet/colorferet/dvd2/data/images/'
 
-    dataSize = 10
-    features = 58
+    #dup1 = partitionsPath + 'dup1.txt' # 736
+    #dup2 = partitionsPath + 'dup2.txt' # 228
+    #fa = partitionsPath + 'fa.txt'     # 994
+    #fb = partitionsPath + 'fb.txt'     # 992
+    # fc = open(partitionsPath + 'fc.txt', 'r')
+
+    if type == 1:
+        filename = partitionsPath1 + partitionName + '.txt'
+    elif type == 2:
+        filename = partitionsPath2 + partitionName + '.txt'
+
+    imgCount = 0
+    print filename
+    num_lines = sum(1 for line in open(filename))
+
+    with open(filename, 'r') as fp:
+
+        for line in fp:
+
+            if (type == 1):
+                l = line.split()
+
+                if os.path.exists(imagePath1 + l[0] +  '/' + l[1]):
+                    imagePath = imagePath1 + l[0] +  '/' + l[1]
+                elif os.path.exists(imagePath2 + l[0] +  '/' + l[1]):
+                    imagePath = imagePath2 + l[0] +  '/' + l[1]
+                else:
+                    print(str(l)  + " File not found")
+                    continue
+
+                if printFound:
+                    print("Found: " + l[0] +  '/' + l[1] + " Progress: " +str(round(100.0*imgCount/num_lines, 1)) + "%")
+                imgCount += 1
+
+                image = cv2.imread(imagePath)
+            if (type == 2):
+                image = line.split()
+                for img in image:
+                    part1 = img[0:5]
+                    part2 = img[5:7]
+                    part3 = img[7:10] # 010 or Something else
+                    part4 = img[11:17]
+                    part5 = ''
+                    if img[10] == 'a':
+                        part4 = img[12:18]
+                        part5 = '_' + img[10]
+                    elif img[10] == 'd':
+                        part4 = img[12:18]
+                    imgFile = part1 + '/' + part1 + '_' + part4 + '_fa' + part5 + '.ppm'
+                    imgFile2 = part1 + '/' + part1 + '_' + part4 + '_fa' + '_a' + part5 + '.ppm'
+
+                    
+                    if os.path.exists(imagePath1 + imgFile):
+                        imagePath = imagePath1 + imgFile
+                    elif os.path.exists(imagePath1 + imgFile2):
+                        imagePath = imagePath1 + imgFile2
+                    elif os.path.exists(imagePath2 + imgFile):
+                        imagePath = imagePath2 + imgFile
+                    elif os.path.exists(imagePath2 + imgFile2):
+                        imagePath = imagePath2 + imgFile2
+                    else:
+                        print(img)
+                        print(str(imgFile) + " File not found")
+                        continue
+                    if printFound:
+                        print("Found: " + imgFile + " Progress: " +str(round(100.0*imgCount/495, 1)) + "%")
+                    imgCount += 1
+
+                    image = cv2.imread(imagePath)
+    print "Imgeas found " + partitionName + " " +  str(type), str(imgCount)
+
+
+def training(J, R, P):
+    img, L = readFeretFiles()
+    np.save('savedMatrix/tmp', img)
+    np.save('savedMatrix/labels', L)
+
+    wLDA = []
+
+    I = createIndex();
+
+    for j in range(0, J-1):
+        wLDA.append(WJlda(img, labels, j, R, P, I))
+
+    return wLDA
+
+
+
+try:
+    mode = int(sys.argv[1])
+except:
+    mode = 3
+
+if mode == 1:
+
+    #img, L = readFeretFiles()
+    #np.save('savedMatrix/tmp', img)
+    #np.save('savedMatrix/labels', L)
+
+    img = np.load('savedMatrix/tmp.npy')
+    L = np.load('savedMatrix/labels.npy')
+    print L
+
+    FJ = createFJ(img)
 
     print FJ.shape
     print FJ
@@ -378,11 +540,11 @@ elif mode == 2:
     FJ = np.load('savedMatrix/FJ.npy')
     L = np.load('savedMatrix/labels.npy')
 
-elif mode == 3:
-
     for j in range(0, J-1):
         wPCA = PCA(FJ[j][:][:])
         dPCA = np.dot(FJ[j][:][:], wPCA)
+
+        print dPCA
 
         wLDA = LDA(dPCA, L)
         DJ = np.dot(dPCA, wLDA)
@@ -393,42 +555,110 @@ elif mode == 3:
         print "New DJ"
         #print DJ
 
-        np.save('savedMatrix/wLDA'+str(j), DJ)
+        np.save('savedMatrix/wPCA'+str(j), wPCA)
+        np.save('savedMatrix/wLDA'+str(j), wLDA)
         np.save('savedMatrix/DJ'+str(j), DJ)
 
-elif mode == 4:
+elif mode == 3:
     # Load DJ
 
-    DJ = array()
-    wLDA = array()
+    DJ = []
+    wLDA = []
+    wPCA = []
+    L = np.load('savedMatrix/labels.npy')
 
-    for i in range(0, 9-1):
-        DJ[i] = np.load('savedMatrix\DJ'+str(i))
-        wLDA[i] = np.load('savedMatrix/wLDA'+str(j))
+    for j in range(0, J-1):
+        DJ.append(np.load('savedMatrix/DJ'+str(j) + '.npy'))
+        wLDA.append(np.load('savedMatrix/wLDA'+str(j) + '.npy'))
+        wPCA.append(np.load('savedMatrix/wPCA'+str(j) + '.npy'))
 
-# Load test image/s
+    loadFA = False
+    if loadFA:
+        faD = []
+        for j in range(0, J-1):
+            faD.append(np.load('savedMatrix/faD'+str(j)+ '.npy'))         
+        faLabels = np.load('savedMatrix/faLabels'+ '.npy')
+
+    else:
+        # LOAD template set 'FA'
+        faImages, faLabels = readSet('fa');
+
+        index = createIndex()
+        # Create F(J) for FA
+        faFJ = createFJ(faImages)
+        print faFJ
+        for j in range(0, J-1):
+            tmptmp = FJ(faImages, j, R, P, k, index)
+            print tmptmp
+
+        sys.exit(0)
+
+        # Calculate DJ for FA using trainging wLDA and wPCA
+        faD = []
+        for j in range(0, J-1):
+            faD.append(faFJ[j].dot(wPCA[j]).dot(wLDA[j]))
+            # STORE Matices DJ
+            np.save('savedMatrix/faD'+str(j), faD[j])
+        np.save('savedMatrix/faLabels', faLabels)
+
+    for testSet in ['fa', 'fb', 'dup1', 'dup2']: # 'fc' does not exist
+
+        print testSet
+
+        # LOAD testset
+        testImages, testLabels = readSet(testSet)
+
+        for idx, image in enumerate(testImages):
+            
+            # Calc F and D
+
+            testD = createFJ(np.array([testImages[idx]]), 0)
+            testDj = []
+            for j in range(0, J-1):
+                testDj.append(testD.dot(wPCA[j]).dot(wLDA[j])) 
+
+            simStorage = []
+
+            for img in range(0, faLabels.size):
+                sim = 0
+                for i in range(0, J-1):
+                    sim += np.dot(testDj[i][i], np.array([faD[i][img]]).T)  / (la.norm(testDj[i]) *la.norm(faD[i][img]))
+                #print("Sim: (img:" + str(img) + ", score:" + str(sim))
+                simStorage.append(tuple((sim, faLabels[img])))
+                
+            print simStorage
+            # Find best SIM and compare Labels
+            sorted_sim = sorted(simStorage, key=lambda tup: tup[0],  reverse=True)
+            print("Best result: " + str(sorted_sim[0]))
+            print("Test Label: " + str(testLabels[idx]) + " Best label: " + str(sorted_sim[0][1]))
+
+elif mode == 4:
+    np.set_printoptions(suppress=True, threshold=(120*142))
+
+    FJ = np.load('savedMatrix/FJ.npy')
+    L = np.load('savedMatrix/labels.npy')
+
+    print(FJ)
 
 
-# Get FJ for picture to test
+elif mode == 5:
+    np.set_printoptions(suppress=True, threshold=(120*142))
 
+    img = np.load('savedMatrix/tmp.npy')
+    L = np.load('savedMatrix/labels.npy')
 
-    # Calculate Similarity
+    print img[0].shape
+    print img[0]
 
+    imgplot = plt.imshow(img)
 
+elif mode == 6:
+    testData()
+elif mode == 7:
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+    for setname in ['training', 'fa', 'fb', 'dup1', 'dup2']: # fc
+        filelist = createFileList(setname)
+        print(filelist)
 
 
 def oldCode():
@@ -480,3 +710,6 @@ def oldCode():
     plt.plot(idx[0]+dataSize/2, class2_sampleLDA, 'bo')
     plt.show()
 
+
+# 00095_930128_fa.ppm Renamed from 00095_940128_fa.ppm
+# 00086_930422_fa.ppm
