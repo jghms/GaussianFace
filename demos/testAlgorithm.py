@@ -19,7 +19,7 @@ testImages = []
 R = 10 # 10
 P = 8 # 8
 PCAAccuracy = 0.98 # 0.98
-k = 3 # J 3 - 11
+k = 11 # J 3 - 16
 J = k*k 
 
 for file in filelist:
@@ -66,7 +66,7 @@ for img in filelist4:
 # Old code for generating F
 # 
 #for j in range(0, J):
-#   Wj = WJlda(fa, labels, j, R, P, k, I, 'testingFA')
+#    Wj = WJlda(fa, labels, j, R, P, k, I, 'testingFA')
 
 # 
 #for j in range(0, J): 
@@ -75,6 +75,8 @@ for img in filelist4:
 #
 #for j in range(0, J):
 #   Wj = WJlda(dup1, labels, j, R, P, k, I, 'testingDup1')
+
+#sys.exit(0)
 
 #for j in range(0, J):
 #   Wj = WJlda(dup2, labels, j, R, P, k, I, 'testingDup2')
@@ -99,15 +101,14 @@ totalerror = 0
 errors = []
 totals = []
 
-for testset in [(fb, 'testingFB', testLabelsFB), (dup1, 'testingDup1', testLabelsDup1), (dup2, 'testingDup2', testLabelsDup2), (fa, 'testingFA', faLabels)]:
-    if totalerror < 3: totalerror += 1; continue;
+#setsToTest = [(fb, 'testingFB', testLabelsFB), (dup1, 'testingDup1', testLabelsDup1), (dup2, 'testingDup2', testLabelsDup2), (fa, 'testingFA', faLabels)]
+setsToTest = [(dup1, 'testingDup1', testLabelsDup1)]
+
+for testset in setsToTest:
+    #if totalerror < 3: totalerror += 1; continue;
     testDj = []
     for j in range(0, J):
         fj = np.array(FJ(np.array(testset[0]), j, R, P, k, I, testset[1]))
-
-        print fj
-
-
         testDj.append(DJ(wLDA[j], fj)) 
 
     total = 0
@@ -118,7 +119,8 @@ for testset in [(fb, 'testingFB', testLabelsFB), (dup1, 'testingDup1', testLabel
         for img in range(0, len(faLabels)):
             sim = 0
             for i in range(0, J-1):
-                sim += np.dot(testDj[i][idx], np.array([Dj[i][img]]).T)  / (la.norm(testDj[i][idx]) *la.norm(Dj[i][img]))
+                if not (Dj[i] == 0).all():
+                    sim += np.dot(testDj[i][idx], np.array([Dj[i][img]]).T)  / (la.norm(testDj[i][idx]) *la.norm(Dj[i][img]))
             simStorage.append(tuple((sim, faLabels[img])))
             
         # Find best SIM and compare Labels
@@ -127,7 +129,7 @@ for testset in [(fb, 'testingFB', testLabelsFB), (dup1, 'testingDup1', testLabel
         if not str(testset[2][idx]) == str(sorted_sim[0][1]):
             errorString = "\t Not equal"
             error += 1
-        print("Test Label: " + str(testset[2][idx]) + " Best label: " + str(sorted_sim[0][1])) + errorString
+        print("Test Label: " + str(testset[2][idx]) + " Best label: " + str(sorted_sim[0][1])) + errorString + " " + testset[1]
 
     totaltotal += total
     totalerror += error
@@ -143,3 +145,13 @@ print totaltotal
 
 print errors
 print totals
+
+
+# .90 .98 k=3
+#[156, 722, 234, 0]
+#[1195, 722, 234, 1196]
+
+
+# .92 1 - 1E-6 k=3
+#[150, 721, 234, 0]
+#[1195, 722, 234, 1196]

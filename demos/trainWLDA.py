@@ -14,7 +14,7 @@ for img in filelist:
 R = 10 # 10
 P = 8 # 8
 #PCAAccuracy = 0.98 # 0.98
-k = 3 # J 3 - 11
+k = 11 # J 3 - 16
 J = k*k 
 
 for file in filelist:
@@ -28,4 +28,4 @@ I = createIndex()
 
 for j in range(0, J):
 	Wj = WJlda(images, labels, j, R, P, k, I)
-	np.save('savedMatrix/Wj' + str(j), Wj)
+	np.save('savedMatrix/Wj' + str(j), Wj) # TODO add

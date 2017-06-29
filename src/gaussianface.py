@@ -159,9 +159,11 @@ def FJ(images, j, R, P, k, I, name=None):
         i += 1
         print "FJ " + str(i) + " " + str(j) + " " + str(name) 
 
+
+    FJ = np.array(FJ)
     if not name is None:
         print "Trying to save"
-        #np.save('savedMatrix/Fj' + str(j)+name, FJ)
+        np.save('savedMatrix/Fj' + str(j)+name, FJ)
     return FJ
 
 def WJlda(images, labels, j, R, P, k, I, name=''):
@@ -171,20 +173,17 @@ def WJlda(images, labels, j, R, P, k, I, name=''):
     """
 
     fj = FJ(images, j, R, P, k, I, name)
-    #np.save('savedMatrix/Fj' + str(j)+name, fj)
-
-    #print fj.shape
-
-    print "Fj shape" + str(fj.shape)
-    #print fj[2][100:120]
 
     wPCA = PCA(fj)
 
-    #print wPCA
-    #return wPCA
+    try:
+        wLDA = LDA(DJ(wPCA, fj), labels)
+    except:
+        print "Here"
+        print fj.shape
+        return np.zeros((fj.shape[1], 1))
 
-    #wLDA = LDA(fj, labels)
-    wLDA = LDA(DJ(wPCA, fj), labels)
+    #print wPCA
     #print wLDA
 
     return wPCA.dot(wLDA)
@@ -273,7 +272,7 @@ def PCA(data):
     important = normV[sortedV[0]]
     w = eigVectors[:, sortedV[0]];
     i = 1;
-    while (important < 0.98 and i < eigSize[0]) or i < 2:
+    while (important < 0.92 and i < eigSize[0]) or i < 2:
         important += normV[sortedV[i]]
         w = np.vstack((w, eigVectors[:, sortedV[i]]));
         i += 1;
@@ -292,35 +291,27 @@ def PCA(data):
 def LDA(data, labels):
     feat = data.shape[1]
 
-    print data.shape
-    print labels
-
     labelsArgSorted = np.argsort(labels)
-    for i in labelsArgSorted:
-        print labels[i]
 
-    
-
-    # Calculate mean
-
+    # Calculate mean and scatter matrices
     mu = np.mean(data, axis=0, dtype='float64')
 
     sw = np.zeros((feat, feat), dtype='float64')
     sb = np.zeros((feat, feat), dtype='float64')
 
-
-
     muClass = np.zeros((1, feat), dtype='float64')
     dataClass = np.zeros((0, feat), dtype='float64')
-    label = labels[0]
+    label = labels[labelsArgSorted[0]]
     objects = 0
-    for idx in range(0, data.shape[0]):
-        if (not label == labels[idx]) or idx == data.shape[0]-1:
-            if idx == data.shape[0]-1:
+    for idx in labelsArgSorted:
+        #print idx
+        if (not label == labels[idx]) or idx == labelsArgSorted[-1]:
+            if idx == labelsArgSorted[-1]:
                 muClass += data[idx]
                 dataClass = np.vstack((dataClass, data[idx]))
                 objects += 1
 
+            #print "Store class" + label
             label = labels[idx]
             muClass = muClass / objects
             sw += ((dataClass - muClass).T.dot((dataClass - muClass)))
@@ -333,28 +324,16 @@ def LDA(data, labels):
         muClass += data[idx]
         dataClass = np.vstack((dataClass, data[idx]))
 
-    #print "w " + str((sb.T == sb).all())
-    #print "b " + str((sw.T == sw).all())
-
-    print "sw"
-    print sw
-    print "sb"
-    print sb
-
-
     invMatrix = la.inv(sw).dot(sb)
-
-    #print "inv " + str((invMatrix.T == invMatrix).all())
-    #print "invClose " + str((np.isclose(invMatrix.T, invMatrix)).all())
 
     eig, eigV = la.eig(invMatrix)
 
-    #print "Res " + str((np.isclose(invMatrix.dot(eigV), eig.dot(eigV)).all()))
+    # Check if Imaginary or negative eigenvalues
+    if (not (eig > 0).all()):
+        raise Exception("Negative Eigenvalues in LDA")
+    if (not (np.isreal(eig).all())):
+        raise Exception("Imaginary Eigenvalues? ")
 
-    eig = np.real(eig)
-    print eig
-
-    # Get more Eigenvectors
     # Sort the eigenvectors
     normV = eig / np.sum(eig)
     eigSize = eigV.shape
@@ -365,28 +344,11 @@ def LDA(data, labels):
     important = normV[sortedV[0]]
     w = eigV[:, sortedV[0]];
     i = 1;
-    print important
-    while (important < 1 - 1E-4 and i < eigSize[0]) :#or i < 100:
-        print normV[sortedV[i]]
+    while (important < 1- 1E-6 and i < eigSize[0]):
         important += normV[sortedV[i]]
         w = np.vstack((w, eigV[:, sortedV[i]]));
         i += 1;
 
     print "LDA Eigenvalues  " + str(i)
-
-    #for i in range(0, eigSize[0]):
-    #    eigVectorsA = np.real(eigV[: ,i])
-    #    eigValuesA = np.real(eig[i])
-        #eigValues = np.diag(eigValues)
-    #    bb = (np.isclose(invMatrix.dot(eigVectorsA), eigValuesA.dot(eigVectorsA)).sum())
-    #    print "ResLDA " + str(i) + " " + str(bb)
-        #if bb:
-            #print invMatrix.dot(eigVectorsA)  - eigValuesA.dot(eigVectorsA)
-            #print invMatrix.dot(eigVectorsA) 
-            #print eigValuesA.dot(eigVectorsA)
-
-            #raw_input("Press key")
-
-
 
     return np.real(w.T)
