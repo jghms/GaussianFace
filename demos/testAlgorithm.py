@@ -103,6 +103,8 @@ totals = []
 
 #setsToTest = [(fb, 'testingFB', testLabelsFB), (dup1, 'testingDup1', testLabelsDup1), (dup2, 'testingDup2', testLabelsDup2), (fa, 'testingFA', faLabels)]
 setsToTest = [(dup1, 'testingDup1', testLabelsDup1)]
+#setsToTest = [(fb, 'testingFB', testLabelsFB)]
+
 
 for testset in setsToTest:
     #if totalerror < 3: totalerror += 1; continue;
@@ -120,7 +122,7 @@ for testset in setsToTest:
             sim = 0
             for i in range(0, J-1):
                 if not (Dj[i] == 0).all():
-                    sim += np.dot(testDj[i][idx], np.array([Dj[i][img]]).T)  / (la.norm(testDj[i][idx]) *la.norm(Dj[i][img]))
+                    sim += np.dot(testDj[i][idx], np.array([Dj[i][img]]).T)  / (la.norm(testDj[i][idx]) * la.norm(Dj[i][img]))
             simStorage.append(tuple((sim, faLabels[img])))
             
         # Find best SIM and compare Labels
@@ -155,3 +157,12 @@ print totals
 # .92 1 - 1E-6 k=3
 #[150, 721, 234, 0]
 #[1195, 722, 234, 1196]
+
+#.92 1-1E-3 k=3
+#[151]
+#[1195]
+
+
+#.93 1-1E-3 k=3
+#[156]
+#[1195]
