@@ -4,19 +4,42 @@ from src.gaussianface import *
 
 R = 10 # 10
 P = 8 # 8
-k = 3 # k 3 - 16
-J = k*k 
+k = 3 # J 3 - 16
+J = k*k
 
 global pcaAcc 
-pcaAcc = 0.92 # 0.98
+pcaAcc = 0.98 # 0.98
 
-# Collect images and Labels for all iamge sets
+# Collect traning images and labels
+filelist = createFileList("training", False)
+images = []
+labels = []
+for img in filelist:
+    labels.append(img[20:25])
+for file in filelist:
+    img = cv2.imread(file)
+    grayImg = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    images.append(grayImg)
+images = np.array(images)
+
+# Create MLPB index
+I = createIndex()
+
+# Create of load the Fj matrices
+# Train transformation Matrix and save.
+wLDA = []
+wPCA = []
+for j in range(0, J):
+    (wp, wl) = WJldaTest(images, labels, j, R, P, k, I, pcaAcc)
+    wPCA.append(wp)
+    wLDA.append(wl)
+
+# Collect images and labels from all other sets
 filelist = createFileList("fa")
 filelist2 = createFileList("fb")
 filelist3 = createFileList("dup1")
 filelist4 = createFileList("dup2")
 trainList = createFileList("training")
-
 images = []
 fa = []
 fb = []
@@ -24,6 +47,7 @@ dup1 = []
 dup2 = []
 testImages = []
 
+    # Images
 for file in filelist:
     img = cv2.imread(file)
     grayImg = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -45,52 +69,33 @@ for file in filelist4:
     images.append(grayImg)
     dup2.append(grayImg)
 
-# TODO
+
+    # Labels
 labels = []
 faLabels = []
+testLabelsFB = []
+testLabelsDup1 = []
+testLabelsDup2 = []
 for img in filelist:
     faLabels.append(img[20:25])
-
-testLabelsFB = []
 for img in filelist2:
     testLabelsFB.append(img[20:25])
-
-testLabelsDup1 = []
 for img in filelist3:
     testLabelsDup1.append(img[20:25])
-
-testLabelsDup2 = []
 for img in filelist4:
     testLabelsDup2.append(img[20:25])
-
-# Create MLPB index
-I = createIndex()
-
-# Generate F matrixes if not already created
-for j in range(0, J):
-    FJ(fa, j, R, P, k, I, 'testingFAk' + str(k))
-for j in range(0, J): 
-    FJ(fb, j, R, P, k, I, 'testingFBk' + str(k))
-for j in range(0, J):
-   FJ(dup1, j, R, P, k, I, 'testingDup1k' + str(k))
-for j in range(0, J):
-   FJ(dup2, j, R, P, k, I, 'testingDup2k' + str(k))
-
-# Load the LDA space transformation Matrices
-wLDA = []
-for j in range(0, J):
-    # Load Wlda j
-    wLDA.append(np.load('savedMatrix/Wj' + str(j) + "k" + str(k) + '.npy'))
-    print "Wlda " + str(j) + str(wLDA[j].shape)
 
 # Calcualte the Dj matrices for set "fa"
 Dj = []
 for j in range(0, J):
-    fj = np.array(FJ(fa, j, R, P, k, I, 'testingFAk' + str(k)))
-    Dj.append(DJ(wLDA[j], fj))
+    if wPCA[j] is None:
+        Dj.append(None)
+    else:
+        fj = np.array(FJ(fa, j, R, P, k, I, 'testingFA'))
+        tmp = wLDA[j].transform(wPCA[j].transform(fj))
+        Dj.append(tmp)
 
 print("Starting testing")
-
 totaltotal = 0
 totalerror = 0
 
@@ -103,24 +108,27 @@ setsToTest = [(fb, 'testingFB', testLabelsFB), (dup1, 'testingDup1', testLabelsD
 #setsToTest = [(dup1, 'testingDup1', testLabelsDup1)]
 #setsToTest = [(dup2, 'testingDup2', testLabelsDup2)]
 
-
 for testset in setsToTest:
     # Create Dj matrices for testset
     testDj = []
     for j in range(0, J):
-        fj = np.array(FJ(np.array(testset[0]), j, R, P, k, I, testset[1] + "k"+str(k)))
-        testDj.append(DJ(wLDA[j], fj)) 
+        if wPCA[j] is None:
+            testDj.append(None)
+        else:
+            fj = np.array(FJ(np.array(testset[0]), j, R, P, k, I, testset[1]))
+            tmp = wLDA[j].transform(wPCA[j].transform(fj))
+            testDj.append(tmp)
 
+    # Calculate similariy and find the best match to testimage from set "fa"
     total = 0
     error = 0
     for idx, image in enumerate(testset[0]):
-        # Calculate similariy and find the best match to testimage from set "fa"
         simStorage = []
         total += 1
         for img in range(0, len(faLabels)):
             sim = 0
             for i in range(0, J):
-                if not (Dj[i] == 0).all():
+                if not (Dj[i] is None):
                     sim += np.dot(testDj[i][idx], np.array([Dj[i][img]]).T)  / (la.norm(testDj[i][idx]) * la.norm(Dj[i][img]))
             simStorage.append(tuple((sim, faLabels[img])))
             
@@ -142,7 +150,6 @@ for testset in setsToTest:
 
 print totalerror
 print totaltotal
-
 
 print errors
 print totals

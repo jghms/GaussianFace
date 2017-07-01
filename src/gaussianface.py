@@ -1,13 +1,9 @@
 import numpy as np
 from numpy import linalg as la
-try: import cv2
-except: pass
-import os
-
-import sys # TODO remove
-import os.path # TODO remove
-#from sklearn.decomposition import IncrementalPCA
-#from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+import cv2
+import os.path
+from sklearn.decomposition import PCA as skPCA
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as skLDA
 
 def extractPatches(rgbImg, k, i):
     """
@@ -146,6 +142,8 @@ def FJ(images, j, R, P, k, I, name=None):
             fj = np.load('savedMatrix/Fj'+str(j)+name+'.npy')
             return fj
 
+    raise Exception("Saving disabled")
+
     FJ = []
     i = 0
     for img in images:
@@ -162,23 +160,27 @@ def FJ(images, j, R, P, k, I, name=None):
     FJ = np.array(FJ)
     if not name is None:
         print "Trying to save"
-        np.save('savedMatrix/Fj' + str(j)+name, FJ)
+        print "disabled"
+        #np.save('savedMatrix/Fj' + str(j)+name, FJ)
     return FJ
 
-def WJlda(images, labels, j, R, P, k, I, name=''):
+def WJlda(images, labels, j, R, P, k, I, pcaAcc, name=None):
     """
     Calculates a transformation matrix based on PCA such that  98% of the signal
     are retained and after that applies LDA to transform the data.
     """
+    if name is None:
+        name = "k" + str(k)
 
     fj = FJ(images, j, R, P, k, I, name)
+    print "Fj shape" + str(fj.shape)
 
-    wPCA = PCA(fj)
+    wPCA = PCA(fj, pcaAcc)
 
     try:
         wLDA = LDA(DJ(wPCA, fj), labels)
-    except:
-        print "Here"
+    except Exception as e:
+        print "Problem with LDA: "  + str(e.args)
         print fj.shape
         return np.zeros((fj.shape[1], 1))
 
@@ -247,7 +249,7 @@ def createFileList(partitionName, printFound=False):
     print "Images found " + partitionName + " " + str(imgCount)
     return fileList;
 
-def PCA(data):
+def PCA(data, pcaAcc):
 
     # Covariance matrix
     #data = (data - np.mean(data, axis=0)) / np.std(data, axis=0) # TODO Check
@@ -271,7 +273,8 @@ def PCA(data):
     important = normV[sortedV[0]]
     w = eigVectors[:, sortedV[0]];
     i = 1;
-    while (important < 0.93 and i < eigSize[0]) or i < 2:
+    print pcaAcc
+    while (important < pcaAcc and i < eigSize[0]) or i < 2:
         important += normV[sortedV[i]]
         w = np.vstack((w, eigVectors[:, sortedV[i]]));
         i += 1;
@@ -331,7 +334,7 @@ def LDA(data, labels):
     if (not (eig > 0).all()):
         raise Exception("Negative Eigenvalues in LDA")
     if (not (np.isreal(eig).all())):
-        raise Exception("Imaginary Eigenvalues? ")
+        raise Exception("Imaginary Eigenvalues in LDA ")
 
     # Sort the eigenvectors
     normV = eig / np.sum(eig)
@@ -351,3 +354,34 @@ def LDA(data, labels):
     print "LDA Eigenvalues  " + str(i)
 
     return np.real(w.T)
+
+def WJldaTest(images, labels, j, R, P, k, I, pcaAcc, name=''):
+    """
+    Calculates a transformation matrix based on PCA such that  98% of the signal
+    are retained and after that applies LDA to transform the data.
+    Using PCA and LDA/SVM from Scikit-learn.
+    """
+
+    fj = FJ(images, j, R, P, k, I, name)
+
+    ipca = skPCA(n_components=pcaAcc)
+    ipca.fit(fj)
+    fj2 = ipca.transform(fj)
+
+    print fj2.shape
+    if fj2.shape[1] == 1:
+        return (None, None)
+
+    ilda = skLDA()
+    #ilda = skLDA(solver='eigen')
+    try:
+        ilda.fit(fj2, labels)
+    except Exception as e:
+        print j
+        return (None, None)
+    fj3 = ilda.transform(fj2)
+
+    print fj3.shape
+
+
+    return (ipca, ilda)
