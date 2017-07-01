@@ -23,20 +23,6 @@ def extractPatches(rgbImg, k, i):
 
     return rgbImg[x:xend, y:yend]
 
-def depricated_extractPatches(rgbImg):
-    width = k
-    height = k
-
-    patches = []
-    while y+height < rgbImg.shape[0]:
-        x = 0
-        while x+width < rgbImg.shape[1]:
-            patches.append(rgbImg[x:x+width, y:y+height])
-            x = x + 2
-        y = y + 2
-
-    return patches
-
 def extractFeature(patch):
     """
     Extract patch feature using multi-scale LBP descriptor.
@@ -142,8 +128,6 @@ def FJ(images, j, R, P, k, I, name=None):
             fj = np.load('savedMatrix/Fj'+str(j)+name+'.npy')
             return fj
 
-    raise Exception("Saving disabled")
-
     FJ = []
     i = 0
     for img in images:
@@ -159,9 +143,7 @@ def FJ(images, j, R, P, k, I, name=None):
 
     FJ = np.array(FJ)
     if not name is None:
-        print "Trying to save"
-        print "disabled"
-        #np.save('savedMatrix/Fj' + str(j)+name, FJ)
+        np.save('savedMatrix/Fj' + str(j)+name, FJ)
     return FJ
 
 def WJlda(images, labels, j, R, P, k, I, pcaAcc, name=None):
@@ -183,9 +165,6 @@ def WJlda(images, labels, j, R, P, k, I, pcaAcc, name=None):
         print "Problem with LDA: "  + str(e.args)
         print fj.shape
         return np.zeros((fj.shape[1], 1))
-
-    #print wPCA
-    #print wLDA
 
     return wPCA.dot(wLDA)
 
@@ -219,7 +198,6 @@ def createFileList(partitionName, printFound=False):
     """
     partitionsPath = './colorferet/'
     imagePath1 = './colorferet/output/'
-    imagePath2 = './colorferet/colorferet/colorferet/dvd2/data/images/'
 
     imgCount = 0
     filename = partitionsPath + partitionName + '.txt'
@@ -236,29 +214,20 @@ def createFileList(partitionName, printFound=False):
 
                 if os.path.exists(imagePath1 + imgFile):
                     imagePath = imagePath1 + imgFile
-                elif os.path.exists(imagePath2 + imgFile):
-                    imagePath = imagePath2 + imgFile
                 else:
                     print(img)
                     print(str(imgFile) + " File not found")
                     continue
                 if printFound:
-                    print("Found: " + imgFile + " Progress: " +str(round(100.0*imgCount/495, 1)) + "%")
+                    print("Found: " + imgFile + " Progress: " +str(round(100.0*imgCount/num_lines, 1)) + "%")
                 imgCount += 1
                 fileList.append(imagePath)
     print "Images found " + partitionName + " " + str(imgCount)
     return fileList;
 
 def PCA(data, pcaAcc):
-
     # Covariance matrix
-    #data = (data - np.mean(data, axis=0)) / np.std(data, axis=0) # TODO Check
     cov = np.cov(data, rowvar=False)
-    #mu = np.mean(data, axis=0)
-    #cov = np.cov((data - mu), rowvar=False)
-
-    #print cov.shape
-    #print "PCA cov symmetric? " + str((cov.T == cov).all())
 
     # Compute eigenvectors
     eigValues, eigVectors = la.eig(cov)
@@ -273,20 +242,12 @@ def PCA(data, pcaAcc):
     important = normV[sortedV[0]]
     w = eigVectors[:, sortedV[0]];
     i = 1;
-    print pcaAcc
     while (important < pcaAcc and i < eigSize[0]) or i < 2:
         important += normV[sortedV[i]]
         w = np.vstack((w, eigVectors[:, sortedV[i]]));
         i += 1;
 
     print("PCA Eigenvectors " + str(i))
-
-
-    #for i in range(0, eigSize[0]):
-    #    eigVectorsA = np.real(eigVectors[: ,i])
-    #    eigValuesA = np.real(eigValues[i])
-    #    #eigValues = np.diag(eigValues)
-    #    print "ResPCA " + str(i) + " " + str((np.isclose(cov.dot(eigVectorsA), eigValuesA.dot(eigVectorsA), 1).all()))
 
     return np.real(w.T)
 
@@ -306,7 +267,6 @@ def LDA(data, labels):
     label = labels[labelsArgSorted[0]]
     objects = 0
     for idx in labelsArgSorted:
-        #print idx
         if (not label == labels[idx]) or idx == labelsArgSorted[-1]:
             if idx == labelsArgSorted[-1]:
                 muClass += data[idx]

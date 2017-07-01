@@ -7,7 +7,7 @@ P = 8 # 8
 k = 3 # k 3 - 16
 J = k*k 
 
-pcaAcc = 0.98 # 0.98
+pcaAcc = 0.92
 
 # Collect the names of images in training set
 filelist = createFileList("training", False)

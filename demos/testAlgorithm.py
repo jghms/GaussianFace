@@ -7,9 +7,6 @@ P = 8 # 8
 k = 3 # k 3 - 16
 J = k*k 
 
-global pcaAcc 
-pcaAcc = 0.92 # 0.98
-
 # Collect images and Labels for all iamge sets
 filelist = createFileList("fa")
 filelist2 = createFileList("fb")
@@ -103,7 +100,6 @@ setsToTest = [(fb, 'testingFB', testLabelsFB), (dup1, 'testingDup1', testLabelsD
 #setsToTest = [(dup1, 'testingDup1', testLabelsDup1)]
 #setsToTest = [(dup2, 'testingDup2', testLabelsDup2)]
 
-
 for testset in setsToTest:
     # Create Dj matrices for testset
     testDj = []
@@ -143,6 +139,6 @@ for testset in setsToTest:
 print totalerror
 print totaltotal
 
-
-print errors
-print totals
+print "Set: " + str([x for _,x,_ in setsToTest])
+print "Error: " + str(errors)
+print "Total: " + str(totals)

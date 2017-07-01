@@ -4,11 +4,10 @@ from src.gaussianface import *
 
 R = 10 # 10
 P = 8 # 8
-k = 3 # J 3 - 16
+k = 3 # k 3 - 16
 J = k*k
 
-global pcaAcc 
-pcaAcc = 0.98 # 0.98
+pcaAcc = 0.98
 
 # Collect traning images and labels
 filelist = createFileList("training", False)
@@ -142,8 +141,8 @@ for testset in setsToTest:
 
     totaltotal += total
     totalerror += error
-    print error 
-    print total
+    print "Failed images: " + str(error) 
+    print "Total images: " + total
     errors.append(error)
     totals.append(total)
 
