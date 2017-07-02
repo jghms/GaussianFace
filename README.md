@@ -6,6 +6,8 @@ The repository does not contain the dataset of images. The data can be places in
 To run the system install and create a virtual environment with Python 2.7. 
 Please note that creating the F matrix for a lot of images as required in training and testing takes a long time.
 
+To use precalculated F and W matrices (k=3). Unzip savedMatrix/savedMatrix.zip so that the npy files are in ./savedMatrix/
+
 $ pip install virtualenv
 $ virtualenv project
 
