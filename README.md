@@ -15,7 +15,7 @@ Activate and configure virtualenv
 $ source project/bin/activate (Linux)
 $ pip install -r requirements.txt
 
-To run training and testing: (Requires FERET normalized images and takes a long time)
+To run training and testing: (Requires FERET normalized images and takes a long time or the precalculated F matrices)
 The normalized feret images should be placed in /colorferet/output in pgm format (examplename: 00001fa010_930831.pgm).
 Train the LDA transformation matrix
 	$ python -m demos.trainWLDA 
