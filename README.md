@@ -19,3 +19,6 @@ Train the LDA transformation matrix
 	$ python -m demos.trainWLDA 
 Test on the testdata
 	$ python -m demos.testAlgorithm 
+
+Test the LBP faces
+        $ python -m demos.lbpfaces <imgpath>
