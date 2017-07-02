@@ -1,10 +1,20 @@
+"""
+This is a code to train the LDA transformation matrix on the normalised FERET images.
+Requires normalized feret images
+
+Run:
+
+$ cd GaussianFace/
+$ python -m demos.trainWLDA
+
+"""
 import cv2
 import numpy as np
 from src.gaussianface import *
 
 R = 10 # 10
 P = 8 # 8
-k = 3 # k 3 - 16
+k = 11 # k 3 - 16
 J = k*k 
 
 pcaAcc = 0.92

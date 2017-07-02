@@ -1,3 +1,14 @@
+
+"""
+This is a demo to test the MLBP with LDA and PCA using the normalized FERET images.
+Requires normalized FERET images
+
+Run:
+
+$ cd GaussianFace/
+$ python -m demos.testAlgorithm
+
+"""
 import cv2
 import numpy as np
 from src.gaussianface import *

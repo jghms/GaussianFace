@@ -317,7 +317,7 @@ def LDA(data, labels):
 
 def WJldaTest(images, labels, j, R, P, k, I, pcaAcc, name=''):
     """
-    Calculates a transformation matrix based on PCA such that  98% of the signal
+    Calculates a transformation matrix based on PCA such that  pcaAcc of the signal
     are retained and after that applies LDA to transform the data.
     Using PCA and LDA/SVM from Scikit-learn.
     """

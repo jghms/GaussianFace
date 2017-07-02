@@ -1,3 +1,13 @@
+"""
+This is a demo to test the MLBP with Scikit learn using the normalized FERET images.
+Requires normalized FERET images
+
+Run:
+
+$ cd GaussianFace/
+$ python -m demos.testWithScikit-learn
+
+"""
 import cv2
 import numpy as np
 from src.gaussianface import *

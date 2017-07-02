@@ -1,3 +1,13 @@
+"""
+This is a demo to test the output of LDA and PCA using a small dataset
+Requires 'iris.data'
+
+Run:
+
+$ cd GaussianFace/
+$ python -m demos.testLDAPCA
+
+"""
 import numpy as np
 from numpy import linalg as la
 
@@ -9,6 +19,7 @@ import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 
 from src.gaussianface import *
+
 
 F1 = np.ones((50, 4)) # JxR
 F2 = np.ones((50, 4)) # JxR
