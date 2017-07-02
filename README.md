@@ -3,6 +3,8 @@ Implementation of the GaussianFace algorithm for TU Delft IN4393 Computer Vision
 
 The repository does not contain the dataset of images. The data can be places in colorferet/output/ and is expected to be normalized images from the gray FERET dataset of size 150x130pixels.
 
+The code used in the final system can be found in src/gaussianface.py and demos/
+
 To run the system install and create a virtual environment with Python 2.7. 
 Please note that creating the F matrix for a lot of images as required in training and testing takes a long time.
 
