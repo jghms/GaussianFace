@@ -10,19 +10,28 @@ Please note that creating the F matrix for a lot of images as required in traini
 
 To use precalculated F and W matrices (k=3). Unzip savedMatrix/savedMatrix.zip so that the npy files are in ./savedMatrix/
 
-$ pip install virtualenv
-$ virtualenv project
+```sh
+pip install virtualenv
+virtualenv project
+```
 
 Activate and configure virtualenv
-$ source project/bin/activate (Linux)
-$ pip install -r requirements.txt
+```sh
+source project/bin/activate (Linux)
+pip install -r requirements.txt
+```
 
 To run training and testing: (Requires FERET normalized images and takes a long time or the precalculated F matrices)
 The normalized feret images should be placed in /colorferet/output in pgm format (examplename: 00001fa010_930831.pgm).
 Train the LDA transformation matrix
-	$ python -m demos.trainWLDA 
+```
+python -m demos.trainWLDA 
+```
 Test on the testdata
-	$ python -m demos.testAlgorithm 
-
+```
+python -m demos.testAlgorithm 
+```
 Test the LBP faces
-        $ python -m demos.lbpfaces <imgpath>
+```
+python -m demos.lbpfaces <imgpath>
+```
